@@ -1,0 +1,474 @@
+
+
+
+mybatis
+
+第一章
+  1.三层架构
+     界面层：和用户打交道的，接受用户的请求参数，显示处理结果的。（jsp，html，servlet）
+     业务逻辑层：接受了界面层传递的数据，计算逻辑，调用数据库，获取数据
+     数据访问层：就是访问数据库，执行对数据的增，删，改，查的。
+
+
+     三层结构对应的包
+        界面层：controller包（servlet）
+	业务逻辑层：service包（XXXService类）
+	数据访问层：dao包（XXXDao类）
+
+
+     三层中类的交互
+        用户使用界面层-->业务逻辑层-->数据访问层（持久层）-->数据库（mysql）
+
+	
+     三层对应的处理框架
+	界面层--servlet--springmvc（框架）
+	业务逻辑层---service类--spring（框架）
+	数据访问层---dao类---mybatis（框架）
+
+2.框架
+  框架是一个舞台，一个模板
+  
+  模板：
+      1.规定好了一些条款，内容
+      2.加入自己的东西
+
+  框架是一个模板
+    1.框架中定义好了一些功能，这些内容是可用的
+    2.可以加入项目中自己的功能，这些功能可以利用框架中写好的功能
+
+   框架是一个软件，半成品的软件，定义好了一些基础功能，需要加入你的功能就是完整的
+   基础功能是可重复使用的，可升级的。
+
+   框架特点：
+	1.框架一般不是全能的，不能做所有事情
+	2.框架是针对某一个领域有效的，特称在某一方面，不如mybatis做数据操作强，但是它不能做其他的
+	3.框架是一个软件
+
+
+jdbc的缺陷
+	1.代码比较多，开发效率低
+	2.需要关注Connection，Statement，ResultSet对象的创建和销毁
+	3.对ResultSet查询的结果，需要自己封装为List
+	4.重复打代码比较多
+	5.业务代码和数据库的操作混在一起
+
+
+
+
+
+
+mybatis提供哪些功能：
+   1.提供了创建Connection，Statement，ResultSet的能力，不用开发人员创建这些对象
+   2.提供了执行sql语句的能力，不用你执行sql
+   3.提供了循环sql，把sql的结果转为Java对象，List集合的能力
+   4.提供了关闭资源的能力，不用你关闭Connection，Statement，ResultSet
+
+开发人员做的是：提供sql语句
+最后是：开发人员提供sql语句--mybatis处理sql--开发人员集合或Java对象
+
+总结：
+	mybatis是一个sql映射框架，提供的数据库的操作能力。增强的JDBC，
+	使用mybatis让开发人员集中精神写sql就可以了，不必关心Connection，Statement，ResultSet
+	的创建，销毁，sql的执行
+
+
+第二章：
+    1.主要类的介绍
+       1）Resources：mybatis中的类，负责读取主配置文件
+	InputStream in = Resources.getResourceAsStream("mybatis.xml)
+
+
+       2）SqlSessionFactoryBuilder：创建SqlSessionFactory对象
+		SqlSessionFactoryBuilder builder = new SqlSessionFactoryBuilder()
+		
+		SqlSessionFactory factory = builder.build(in);
+	
+       3)SqlSesionFactory：重量级对象，程序创建这个对象耗时比较长，使用资源比较多。
+	
+	   在整个项目中有一个就行了
+
+	   SqlSesionFactory是一个接口，接口的实现类是DefaultSqlSesionFactory
+
+	   SqlSesionFactory 的作用是获取SqlSession对象，SqlSession session = factory.openSession();
+		
+	  方法：
+	     1.openSession()：无参数的，获取是非自动提交事务的SqlSession对象
+	     2.openSession(true)：true表示获取的是一个自动提交事务的SqlSession对象
+	
+	4）SqlSession接口：定义了操作数据的方法 例如 selectOne(),selectList(),insert(),delete(),commit(),rollback()等
+	   SqlSession接口的实现类DefaultSqlSession
+	   
+	   使用要求：  SqlSession对象不是线程安全的，需要在方法内部使用，在执行sql语句之前，使用openSession()获取SqlSession对象
+	   在执行sql语句之后，需要关闭它，执行SqlSession.close()，这样能保证他的使用是线程安全的。
+
+第三章：
+	1.动态代理：使用SqlSession.getMapper(dao接口.class)获取这个dao接口的对象
+
+		使用动态代理：
+
+		1.获取SqlSession对象，SqlSessionFactory.openSession()
+
+		2.使用getMapper方法获取某个接口的对象，sqlSession.getMapper(接口.class)
+
+		3.使用dao接口的方法，调用方法执行了mapper文件中的sql语句
+
+
+
+		使用动态代理的要求
+
+		1.dao接口和mapper文件放在在一起，同一目录
+
+		2.dao接口和mapper文件名称一致
+
+		3.mapper文件中的namespace的值是dao接口的全限定名称
+
+		4.mapper文件中的<select><insert><update><delete>等的id是接口中方法名称
+
+		5.dao接口中不要使用重载方法，不要使用同名的，不同参数的方法
+
+	
+	2.传入参数：从Java代码中把数据传入到mapper文件的sql语句中
+
+		1）parameterType：写在mapper文件中的一个属性。表示dao接口中方法的参数的数据类型。
+
+			例如StudentDao接口
+
+			public
+
+			parameterType：dao接口中方法参数的数据类型
+
+			parameterType他的值是Java数据类型全限定名称或者mybatis定义的别名
+
+
+
+注意：parameterType不是强制的，mybatis通过反射机制能够发现接口参数的数据类型，所以可以没有，一般也不写
+
+
+
+		2）一个简单类型的参数：
+
+			简单类型：mybatis把Java的基本数据类型和String都叫做简单类型
+
+			在mapper文件获取简单类型的一个参数的值，使用 #{任意字符}
+
+			接口：public Student selectStudentById(Integer id)
+
+			mapper:select id,name,email,age from student where id=#{studentid}
+
+
+			<select id="" parameterType="java.lang.Integer" resultType""></select>
+
+
+		3）多个参数，使用 @Param命名参数
+
+			接口方法：
+			List<Student> selectMultiParam(@Param("personName") String name, @Param("personage") int age)
+
+
+			mapper文件：
+			<select id="selectMultiParam" resultType="com.bjpowernode.domain.Student">
+				select id,name,email,age from student where name=#{persioName} or age=#{personage}
+			</select>
+	
+		4)多个参数，使用Java对象
+			使用对象的语法#{对象的属性名, javaType=类型名称, jdbcType=数据类型}很少用
+			javaType：在Java中的数据类型
+			jdbcType：在数据库中的数据类型
+			
+			例如：#{paramName,javaType=java.lang.String,jdbcType=VARCHAR}
+
+			我们使用简化的方式：#{属性名}，  javaType,  jdbcType的值mybatis反射能获取，不用提供
+			
+			包名的含义：
+				vo ：value object，放一些存储数据的类，比如说，提交请求的参数，name,age现在想把name,age传给一个service类
+
+				vo：view object，从servlet把数据返回给浏览器使用的类，表示显示结果的类
+
+				pojo：普通的有set，get方法的Java类，普通的Java对象
+
+				entity（domain域）：实体类，和数据库中的表对应的类
+
+		5）多个参数-简单类型，按位置传值
+
+			mybatis 3.4之前使用#{0}，#{1}
+			mybatis 3.4之后使用#{arg0}，#{arg1}
+
+			接口
+			List<Student> selectMultiParam(String name,int age);
+
+			mapper文件
+			<select id="selectMultiParam" resultType="com.bjpowernode.domain.Student">
+				select id,name,email,age from student where name=#{arg0} or age=#{arg1}
+			</select>
+
+		6）多个参数使用Map存活多个值
+			#{map的key}   不建议使用，可读性差
+
+		7）“#”与“$”
+
+			#{}代替的是PreparedStatment对象相当于占位符？
+			select id,name,email,age from student where id=?
+
+			${}代替的是Statement对象相当于字符串的连接
+			select id,name,email,age from student where id=1001
+
+			使用Statement对象执行sql，效率比PreparedStatement低
+
+			$：可以替换表名或者列名，你能确定数据是安全的，可以使用$
+			例：
+			<select>
+			select * from student order by ${cloumName}
+			</select>
+
+
+			#与$的区别
+			1. #使用 ? 在sql语句中做占位符，使用PreparedStatement执行sql，效率高
+			2. #能够避免sql注入，更安全。
+			3. $不能使用占位符，是字符串连接方式，使用Statement对象执行sql，效率低
+			4. $有sql注入的风险，缺乏安全性
+			5. $：可以替换表明或者列名
+
+
+
+	3.mybatis的输出结果
+
+	mybatis执行了sql语句，得到Java对象
+
+	1）resultType结果类型，指sql语句执行完成后，数据转为的Java对象，|Java类型是任意的。
+	   resultType结果类型 1.类型的全限定名称，2.类型的别名 例如java.lang.Integer别名是int
+	   处理方式：
+		1.mybatis指行sql语句，然后mybatis调用类的无参构造方法，创建对象
+		2.mybatis把ResultSet指定列值赋给同名的属性
+		
+		<select id="selectMuliposition" resultType="com.bjpowernode.domain.Student">
+			select * from student
+		</select>
+
+		对等的jdbc
+		ResultSet rs = executeQuery("select * from student")
+		while(rs.next()){
+			Student student = new Student();
+			student.setId(rs.getInt("id"));
+			student.setName(rs.getString("name"))
+		}
+	2)定义自定义类型的别名
+	   1）在mybatis主配置文件中定义，使用<typeAlias>定义别名
+		1.<typeAliases>
+			<typeAlias type="com.bjpowernode.domain" alias="stu">
+			一个typeAlias标签只能定义一个
+		  </typeAliases>
+		2.类名就是别名，这种方式居多
+		  <typeAliases>
+			<package name="com.bjpowernode.domain">
+		  </typeAliases>
+	   2）可以在resultType中使用自定义别名
+
+	   3）不建议使用别名，使用全限定名称
+
+
+	3）返回值是Map<Object，Object>
+
+		1.返回map时只能是一行
+		2.列名是map的key，列值是map的value
+	4.resultMap：结果映射，指定列名和Java对象的属性对应关系的
+
+		1）你自定义列值赋值给哪个属性
+		2）当你的列名和属性名不一样时，一定使用resultMap 
+
+		如何使用resultMap
+			1）先定义resultMap
+			2）在select标签，使用resultMap来引用1定义的
+			定义resultMap
+			<resultMap id="" type="">
+			id：自定义名称，表示定义的这个resultMap
+			type：Java类型的全限定名称
+
+			主键列使用id标签
+			<id column="" property=""/>
+			column列名
+			propertyJava对象的属性名
+
+			非主键使用result标签
+			<result column="" property="">
+
+			例：
+
+			<resultMap id="studentMap" type="com.bjpowernode.domain.Student">
+			<id column="id" property="id"/>
+			<result column="name" property="name">
+			</resultType>
+
+	列名和属性名不同时解决方法
+		1）使用resultMap
+		   resultType默认原则是 同名的列值赋值给同名的属性，使用列别名
+		2）使用sql语句中的别名（as）
+		    select id as stuId from t_user
+		    别名是Java对象的属性名
+
+	5.like模糊查询
+		第一种模糊查询
+			在Java代码中指定like的内容，直接在sql语句中使用like 需要的值
+			通过dao层方法传递给sql语句
+
+		第二种方式，在mappper的文件中拼接
+			select id,name,email,age from student where name like "%" #{name} "%"
+
+
+
+对应的jdbc
+
+使用#{}之后，mybatis执行sql是使用的jdbc中的PreparedStatement对象
+
+由mybatis执行下面的代码：
+
+1.mybatis创建Connection，PreparedStatement对象
+
+    String sql = "select id,name,email,age,from student where id=?";
+
+    PreparedStatement pst = conn.preparedStatement(sql);
+
+    pst.setInt(1,1001);
+
+
+
+2.执行sql封装为resultType="com.bjpowernode.domain.Student"
+	ResultSet rs = ps.executeQuery();
+
+	Student student = new Student();
+
+	while(re.next){
+
+	//从数据库取表的一行数据，存到一个Java对象的属性中
+
+		student.setId(rs.getInt("Id"));
+
+		student.setName(rs.getString("name"));
+
+		student.setEmail(rs.getString("email"));
+
+		student.setage(rs.getInt("age"));
+
+	}
+
+	return student;   //赋给了dao方法调用的返回值
+
+
+第四章动态sql：
+   动态sql：sql的内容是变化的，可以根据条件获取到不同的sql语句
+             主要是where部分的发生变化。
+   
+   动态sql的实现，使用mybatis提供的标签，<if>，<where>，<foreach>
+
+   1)<if>是判断条件的
+      语法<if test="Java对象的属性值">
+            部分sql语句
+	  </if>
+
+   2)<where>用来包含多个<if>的当多个if有一个成立的，<where>会自动增加一个where关键字，
+             并去掉， if中多余的and，or等
+
+   3）<foreach>循环Java中的数组，list集合的，主要用在sql的in语句中
+      学生id是 1001，1002，1003的三个学生
+
+      select * from student where id in(1001,1002,1003)
+
+      public List<Student> selectFor(List<Integer> idList)
+
+      List<Integer> list = new ArrayList
+      list.add(1001);
+      list.add(1002);
+      list.add(1003);
+
+      dao.selectFor(list);
+
+      <foreach collectionn="" item="" open="" close="" separator="">
+	#{xxx}
+      </foreach>
+
+      collection:表示接口中的方法参数的类型，如果是数组使用array，如果是list集合使用list
+      item：自定义的，表示数组和集合成员的变量
+      open：循环开始时字符
+      close：循环结束时的字符
+      separator：集合成员之间的分隔符
+
+相当于
+List<Integer> list = new ArrayList
+      list.add(1001);
+      list.add(1002);
+      list.add(1003);
+
+String sql = "select * from where id in"
+StringBuilder builder = new StringBuilder("")
+int init=0
+
+int len = list.size();
+//添加开始的
+builder.append("(")
+for(Integer i:list){
+	builder.append(i).append(",");
+}
+//删除多余的逗号
+builder.deleteCharAt(builder.length()-1);
+//添加结尾
+builder.append(")")
+sql=sql+builder.toString()
+System.out.println("sql=="+sql)
+
+运行结果：select * from student where id in(1001,1002,1003)
+
+第五章：
+   1.数据库的属性配置文件：把数据库连接信息放到一个单独的文件中，和mybatis主配置文件分开。末地石便于修改，保存，处理多个数据库的信息
+
+    1）在resource目录中定义一个属性配置文件，xxx.properties，例如：jdbc.properties
+       在属性配置文件中，定义数据，格式是 key=value
+       key：一般使用，做多级目录的
+       例如 jdbc.mysql.driver    ,  jdbc.driver
+       jdbc.driver=com.mysql.jdbc.Driver
+       jdbc.url=jdbc:mysql://.....
+       jdbc.username=root
+       jdbc.password=333
+
+2）在mybatis的主配置文件，使用<property>指定文件的位置
+   在需要使用值的地方 ${key}
+
+2.mapper文件，使用package指定路径
+	<mappers>
+		第二种方式：使用包名
+		name：xml文件（mapper文件）所在的包名，这个包中所有xml文件一次都能加载
+		使用package的要求：
+		  1.mapper文件名称需要和接口名称一样，区分大小写的一样
+		  2.mapper文件和dao接口需要在同一目录
+
+	   <package name="com.bjpowernode.dao"/>
+	</mappers>
+
+
+
+第六章：PageHelper
+ 
+
+
+
+
+
+
+
+
+
+
+mybatis主配置文件
+    transactionManager：mybatis提交事务，回滚事务的方式
+      type：事务的处理类型
+	1）JDBC：表示mybatis底层是调用JDBC中的Connection对象的，commit，rollback
+	2）MANAGER：把mybatis的事务处理委托给其他的容器（一个服务器软件，一个框架（spring））
+
+   dataSource：表示数据源，Java体系中，规定实现了javax.sql.DataSource接口的都是数据源
+   
+   数据源表示Connection对象
+   mybatis中的类实现了DataSource接口，PooledDataSource也就是一个连接池
+
+
+   type：指定数据源的类型
+	1）POOLED：使用连接池，mybatis会创建PooledDataSource类
+	2）UNPOOLED：不使用连接池，在每次执行sql语句，先创建连接，执行sql，再关闭连接mybatis会创建一个UnPooledDataSource，管理Connection对象的使用
+	3）JNDI：Java命名和目录服务（windows的注册表）
